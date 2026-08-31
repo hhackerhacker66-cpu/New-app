@@ -1,0 +1,6 @@
+{
+  "name": "FF Top Up",
+  "description": "Full-featured Free Fire diamond top-up store, lucky spin rewards, Room database order tracking, and diamond calculator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
