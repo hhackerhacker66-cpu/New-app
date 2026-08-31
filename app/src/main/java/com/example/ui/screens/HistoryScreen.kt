@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ import com.example.data.local.OrderEntity
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppNavTab
 import com.example.ui.viewmodel.TopUpViewModel
+import com.example.util.ReceiptPrinterHelper
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,9 +35,12 @@ fun HistoryScreen(
     viewModel: TopUpViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val orders by viewModel.orders.collectAsStateWithLifecycle()
     var selectedOrderForReceipt by remember { mutableStateOf<OrderEntity?>(null) }
     var showClearConfirm by remember { mutableStateOf(false) }
+    var showScanVerifyInput by remember { mutableStateOf(false) }
+    var manualQrInput by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -57,22 +62,35 @@ fun HistoryScreen(
                     color = LightText
                 )
                 Text(
-                    text = "${orders.size} Total Orders Recorded",
+                    text = "${orders.size} Total Orders • Auto-Print & QR Enabled",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText
                 )
             }
 
-            if (orders.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = { showClearConfirm = true },
-                    modifier = Modifier.testTag("clear_history_btn")
+                    onClick = { showScanVerifyInput = true },
+                    modifier = Modifier.testTag("verify_qr_btn")
                 ) {
                     Icon(
-                        Icons.Default.DeleteSweep,
-                        contentDescription = "Clear All",
-                        tint = ErrorRed
+                        Icons.Default.QrCodeScanner,
+                        contentDescription = "Verify QR",
+                        tint = DiamondCyanLight
                     )
+                }
+
+                if (orders.isNotEmpty()) {
+                    IconButton(
+                        onClick = { showClearConfirm = true },
+                        modifier = Modifier.testTag("clear_history_btn")
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteSweep,
+                            contentDescription = "Clear All",
+                            tint = ErrorRed
+                        )
+                    }
                 }
             }
         }
@@ -140,6 +158,13 @@ fun HistoryScreen(
                     HistoryOrderCard(
                         order = order,
                         onClick = { selectedOrderForReceipt = order },
+                        onPrint = {
+                            ReceiptPrinterHelper.printOrderReceipt(
+                                context = context,
+                                order = order,
+                                layout = viewModel.selectedPrintLayout
+                            )
+                        },
                         onDelete = { viewModel.deleteOrder(order) },
                         onReOrder = {
                             viewModel.playerIdInput = order.playerId
@@ -154,7 +179,84 @@ fun HistoryScreen(
     selectedOrderForReceipt?.let { order ->
         ReceiptDialog(
             order = order,
+            autoPrintEnabled = viewModel.autoPrintReceipt,
+            onAutoPrintToggle = { viewModel.autoPrintReceipt = it },
             onDismiss = { selectedOrderForReceipt = null }
+        )
+    }
+
+    // QR Verification Dialog
+    if (showScanVerifyInput) {
+        AlertDialog(
+            onDismissRequest = { showScanVerifyInput = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = DiamondCyanLight)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Verify Receipt QR Payload")
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Paste or simulate scan of a Free Fire top-up receipt QR string to verify authenticity & zero fee cap.",
+                        fontSize = 12.sp,
+                        color = SecondaryText
+                    )
+                    OutlinedTextField(
+                        value = manualQrInput,
+                        onValueChange = { manualQrInput = it },
+                        placeholder = { Text("FF-RECEIPT|OID:...|UID:...", fontSize = 12.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showScanVerifyInput = false
+                        viewModel.verifyQrPayload(manualQrInput)
+                        manualQrInput = ""
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan)
+                ) {
+                    Text("Verify Authenticity", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showScanVerifyInput = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Verification Result Modal
+    if (viewModel.showQrVerificationModal) {
+        AlertDialog(
+            onDismissRequest = { viewModel.showQrVerificationModal = false },
+            title = {
+                Text(
+                    text = "Receipt QR Verification",
+                    fontWeight = FontWeight.Black
+                )
+            },
+            text = {
+                Text(
+                    text = viewModel.verificationResultText ?: "No data verified",
+                    fontSize = 13.sp,
+                    color = LightText
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.showQrVerificationModal = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = FireOrange)
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            }
         )
     }
 
@@ -186,6 +288,7 @@ fun HistoryScreen(
 fun HistoryOrderCard(
     order: OrderEntity,
     onClick: () -> Unit,
+    onPrint: () -> Unit,
     onDelete: () -> Unit,
     onReOrder: () -> Unit
 ) {
@@ -279,13 +382,24 @@ fun HistoryOrderCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
+                        onClick = onPrint,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Print,
+                            contentDescription = "Print Receipt",
+                            tint = FireOrangeLight,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(
                         onClick = onReOrder,
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
                             Icons.Default.Repeat,
                             contentDescription = "Top Up Again",
-                            tint = FireOrangeLight,
+                            tint = DiamondCyanLight,
                             modifier = Modifier.size(18.dp)
                         )
                     }

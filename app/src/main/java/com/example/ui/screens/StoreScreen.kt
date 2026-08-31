@@ -58,9 +58,9 @@ fun StoreScreen(
         modifier = modifier
             .fillMaxSize()
     ) {
-        LazyVerticalGrid(
+   contentPaddingcalGrid(
             columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
+            contentPaddingcontentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 90.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
@@ -432,9 +432,9 @@ fun StoreHeroBanner() {
                 )
 
                 Text(
-                    text = "Up to 100% Double Diamond Bonus on 1st Top-Up!",
+                    text = "100% Zero Fee Capped • Auto Receipt Printing & Verification QR",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = DiamondCyanLight
                 )
             }
 

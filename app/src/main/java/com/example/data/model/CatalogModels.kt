@@ -33,14 +33,20 @@ data class TopUpItem(
     val isDoubleBonus: Boolean = false
 )
 
-enum class PaymentType(val displayName: String, val iconName: String, val processingFee: Double = 0.0) {
-    UPI_GPAY("Google Pay / UPI", "payments", 0.0),
-    PHONEPE("PhonePe / Paytm", "account_balance_wallet", 0.0),
-    CREDIT_CARD("Credit / Debit Card", "credit_card", 0.0),
-    PAYPAL("PayPal", "paypal", 0.15),
-    RAZER_GOLD("Razer Gold", "stars", 0.0),
-    UNIPIN("UniPin Wallet", "account_balance", 0.0),
-    APPLE_PAY("Apple Pay", "apple", 0.0)
+enum class PaymentType(
+    val displayName: String,
+    val iconName: String,
+    val processingFee: Double = 0.0,
+    val subtitle: String = "0% Fee Capped"
+) {
+    QR_SCAN_PAY("Instant QR Code Scan & Pay", "qr_code_scanner", 0.0, "Auto-Verified • 0% Fee"),
+    UPI_GPAY("Google Pay / UPI FastPay", "payments", 0.0, "Zero Gateway Fee"),
+    PHONEPE("PhonePe / Paytm Wallet", "account_balance_wallet", 0.0, "Zero Gateway Fee"),
+    CREDIT_CARD("Credit / Debit Card (Visa/MC)", "credit_card", 0.0, "Zero Surcharge"),
+    RAZER_GOLD("Razer Gold Direct Pin", "stars", 0.0, "Official Partner • 0% Fee"),
+    UNIPIN("UniPin Credits / Wallet", "account_balance", 0.0, "Instant Delivery"),
+    APPLE_PAY("Apple Pay / Touch ID", "apple", 0.0, "Zero Fee Capped"),
+    PAYPAL("PayPal Global Checkout", "paypal", 0.0, "Zero Fee Promotional Cap")
 }
 
 data class PromoCode(

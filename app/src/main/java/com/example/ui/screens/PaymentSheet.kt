@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,10 +17,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +34,7 @@ import com.example.data.model.PaymentType
 import com.example.ui.components.SectionHeader
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.TopUpViewModel
+import com.example.util.QRCodeGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -301,8 +305,8 @@ fun PaymentSheet(
             // Payment Methods
             item {
                 SectionHeader(
-                    title = "Select Payment Gateway",
-                    subtitle = "All official channels 100% secure"
+                    title = "Select Payment Gateway (Zero Fee Capped ⚡)",
+                    subtitle = "All official channels 100% secure • $0.00 Surcharge"
                 )
             }
 
@@ -318,7 +322,7 @@ fun PaymentSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -332,29 +336,94 @@ fun PaymentSheet(
                                 )
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = paymentType.displayName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = LightText
-                            )
+                            Column {
+                                Text(
+                                    text = paymentType.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = LightText
+                                )
+                                Text(
+                                    text = paymentType.subtitle,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SecondaryText
+                                )
+                            }
                         }
 
-                        if (paymentType.processingFee > 0) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(EmeraldGreen.copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("0% FEE", fontSize = 10.sp, color = EmeraldGreen, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // If QR_SCAN_PAY is selected, render dynamic payment QR code
+            if (viewModel.selectedPaymentMethod == PaymentType.QR_SCAN_PAY) {
+                item {
+                    val finalPrice = viewModel.calculateFinalPrice()
+                    val paymentQrString = "upi://pay?pa=freefire.topup@garena&pn=FreeFireOfficial&am=$finalPrice&cu=USD&tn=FF-TopUp-${viewModel.playerIdInput}"
+                    val paymentQrBitmap = remember(finalPrice, viewModel.playerIdInput) {
+                        QRCodeGenerator.generateQrBitmap(
+                            content = paymentQrString,
+                            size = 300,
+                            foregroundColor = android.graphics.Color.BLACK,
+                            backgroundColor = android.graphics.Color.WHITE
+                        ).asImageBitmap()
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = DarkSurfaceElevated,
+                        border = BorderStroke(1.dp, DiamondCyan.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
-                                text = "+$${paymentType.processingFee} fee",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = SecondaryText
+                                text = "📱 Scan QR Code to Pay Instant",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black,
+                                color = DiamondCyanLight
                             )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(EmeraldGreen.copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            Text(
+                                text = "Scan with any UPI, Banking app, or Wallet (0% Fee)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SecondaryText,
+                                modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color.White,
+                                modifier = Modifier.size(160.dp)
                             ) {
-                                Text("0% FEE", fontSize = 10.sp, color = EmeraldGreen, fontWeight = FontWeight.Bold)
+                                Image(
+                                    bitmap = paymentQrBitmap,
+                                    contentDescription = "Payment QR",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp)
+                                )
                             }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = "Payable Amount: $$finalPrice (Zero Processing Fee)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = LightText
+                            )
                         }
                     }
                 }

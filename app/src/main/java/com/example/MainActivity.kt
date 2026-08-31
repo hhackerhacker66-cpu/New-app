@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppNavTab
 import com.example.ui.viewmodel.TopUpViewModel
+import com.example.util.ReceiptPrinterHelper
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,12 +46,24 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppScreen(viewModel: TopUpViewModel = viewModel()) {
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel.snackbarMessage) {
         viewModel.snackbarMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.snackbarMessage = null
+        }
+    }
+
+    LaunchedEffect(viewModel.triggerAutoPrintForOrder) {
+        viewModel.triggerAutoPrintForOrder?.let { order ->
+            ReceiptPrinterHelper.printOrderReceipt(
+                context = context,
+                order = order,
+                layout = viewModel.selectedPrintLayout
+            )
+            viewModel.triggerAutoPrintForOrder = null
         }
     }
 
@@ -202,6 +216,8 @@ fun MainAppScreen(viewModel: TopUpViewModel = viewModel()) {
     if (viewModel.showReceiptDialog && viewModel.completedOrder != null) {
         ReceiptDialog(
             order = viewModel.completedOrder!!,
+            autoPrintEnabled = viewModel.autoPrintReceipt,
+            onAutoPrintToggle = { viewModel.autoPrintReceipt = it },
             onDismiss = {
                 viewModel.showReceiptDialog = false
                 viewModel.completedOrder = null
